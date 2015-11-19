@@ -3,7 +3,8 @@ var backToMainMenu;
 var step = 0;
 var list;
 var personIndex;
-var cNumber
+var currentInputNumber
+var replaceIndex;
 
 function displayScreenMessage () {
     console.log('');
@@ -17,9 +18,25 @@ function displayErrorMessage (message) {
     console.log(message);
 }
 
-function displayMessageReplaceOrNew() {
+function displayStatusMessage (message) {
+    console.log('');
+    console.log('.....................INFO......................');
+    console.log(message);
+}
+
+function displayInputNameMessage () {
+    console.log('');
+    console.log('Enter the name (8 characters maximum): ');
+}
+
+function displayMessageReplaceOrNew () {
     console.log('');
     console.log('Enter the person id to append or \'n\' for new person (b to back):');
+}
+
+function displayConfirmReplaceMessage (name, oldNumber, newNumber) {
+    console.log('');
+    console.log('Do you want to replace ' + name + '\'s contact ' + oldNumber + ' with ' + newNumber + ' (y for yes, any key to cancel): ');
 }
 
 function displayAddToExistingPersonMessage () {
@@ -84,31 +101,51 @@ function checkExistingNumber (number, notExistCallback, existingCallback) {
         else {
             notExistCallback();
         }
-        
     }, function () {
-        console.log('.....................ERROR.....................');
-        console.log('Can\'t get the data!');
-        step = 0;
-        displayScreenMessage();
+        updateError();
     });
 }
 
 function processInsertPhoneNumber (input) {
-    cNumber = input;
+    currentInputNumber = input;
     db.getData(function (data) {
         list = data;
         displayList(list);
         displayMessageReplaceOrNew();
     }, function () {
-        console.log('.....................ERROR.....................');
-        console.log('Can\'t get the data!');
-        step = 0;
-        displayScreenMessage();
+        updateError();
     });
 }
 
 function createNewPerson () {
+    displayInputNameMessage();
+}
 
+function updateSuccess (list) {
+    displayList(list);
+    step = 0;
+    displayScreenMessage();
+}
+
+function updateError () {
+    displayErrorMessage('Can\'t get the data!')
+    step = 0;
+    displayScreenMessage();
+}
+
+function addNewPersonToList(name, number) {
+    var person = {
+        name: name,
+        numbers: []
+    };
+    person.numbers.push(number);
+    list.push(person);
+    db.saveData(list, function () {
+        updateSuccess(list);
+    }, function () {
+        list.splice(-1, 1);
+        updateError();
+    });
 }
 
 function addToExistingPerson (index, number) {
@@ -126,32 +163,24 @@ function addNumberToExistingPerson() {
         displayAddToExistingPersonMessage();
     }
     else {
-        list[personIndex].numbers.push(cNumber);
+        list[personIndex].numbers.push(currentInputNumber);
         db.saveData(list, function () {
-            displayList(list);
-            step = 0;
-            displayScreenMessage();
+            updateSuccess(list);
         }, function () {
-            step = 0;
             list[personIndex].numbers.splice(-1, 1);
-            displayErrorMessage('Can\'t save the data!');
-            displayScreenMessage();
+            updateError();
         });
     }
 }
 
 function replaceNumber (index) {
     var temp = list[personIndex].numbers[index];
-    list[personIndex].numbers[index] = cNumber;
+    list[personIndex].numbers[index] = currentInputNumber;
     db.saveData(list, function () {
-        displayList(list);
-        step = 0;
-        displayScreenMessage();
+        updateSuccess(list);
     }, function () {
-        step = 0;
         list[personIndex].numbers[index] = temp;
-        displayErrorMessage('Can\'t save the data!');
-        displayScreenMessage();
+        updateError();
     });
 }
 
@@ -161,6 +190,7 @@ exports.start = function (back) {
 }
 
 exports.recieveInput = function (input) {
+    //Main screen
     if (step === 0) {
         if (input === 'b') {
             backToMainMenu();
@@ -210,6 +240,21 @@ exports.recieveInput = function (input) {
             }
         }
     }
+    else if (step === 2) {
+        if (input === 'b') {
+            step = 0;
+            displayScreenMessage();
+        }
+        else {
+            if (input.length > 8 || input.length === 0) {
+                displayErrorMessage('name must less than or equal 8 charactors and not be empty!');
+                displayInputNameMessage();
+            }
+            else {
+                addNewPersonToList(input, currentInputNumber);
+            }
+        }
+    }
     else if (step === 3) {
         if (input === 'b') {
             step = 0;
@@ -231,13 +276,26 @@ exports.recieveInput = function (input) {
             }
             else {
                 if (index <= list[personIndex].numbers.length && index > 0) {
-                    replaceNumber(index - 1);
+                    step = 4;
+                    replaceIndex = index - 1;
+                    displayConfirmReplaceMessage(list[personIndex].name, list[personIndex].numbers[replaceIndex], currentInputNumber);
                 }
                 else {
                     displayErrorMessage('Invalid input!');
                     displayAddToExistingPersonMessage();
                 }
             }
+        }
+    }
+    //Confirm replace
+    else if (step === 4) {
+        if (input.toLowerCase() === 'y') {
+            replaceNumber(replaceIndex);
+        }
+        else {
+            step = 0;
+            displayStatusMessage('Cancel replace phone number!');
+            displayScreenMessage();
         }
     }
 }

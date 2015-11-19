@@ -1,6 +1,8 @@
 var sys = require("sys");
 var searchModule = require('./search.js');
 var insertModule = require('./insert.js');
+var deleteModule = require('./delete.js');
+var editModule = require('./edit.js');
 var stdin = process.openStdin();
 var screen = 0;
 
@@ -10,7 +12,6 @@ function appStasrt () {
 
 stdin.addListener("data", function (d) {
     var input = d.toString().trim();
-
     if (screen === 0) {
         mainScreenInput(input);
     }
@@ -21,10 +22,10 @@ stdin.addListener("data", function (d) {
         insertModule.recieveInput(input);
     }
     else if (screen === 3) {
-        insertModule.recieveInput(input);
+        editModule.recieveInput(input);
     }
     else if (screen === 4) {
-        insertModule.recieveInput(input);
+        deleteModule.recieveInput(input);
     }
 });
 
@@ -66,11 +67,11 @@ function mainScreenInput(input) {
     }
     else if (input === 'm') {
         screen = 3;
-        console.log('enter index to modify (b to back)');
+        editModule.start(mainScreen);
     }
     else if (input === 'd') {
         screen = 4;
-        console.log('enter index to delete (b to back)');
+        deleteModule.start(mainScreen);
     }
     else {
         console.log('');
